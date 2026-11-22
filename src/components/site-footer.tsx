@@ -28,6 +28,12 @@ export async function SiteFooter() {
         <div className="flex flex-col gap-2.5 text-sm text-muted">
           <Link href="/cabanas" className="fx-link self-start">Ver disponibilidad</Link>
           <Link href="/condiciones" className="fx-link self-start">Condiciones de reserva</Link>
+          <p className="mt-3 text-xs uppercase tracking-[2px] text-muted/80">También estamos en</p>
+          {site.listings.map((l) => (
+            <a key={l.id} href={l.url} target="_blank" rel="noreferrer" className="fx-link self-start">
+              {l.name} · ★ {l.rating}
+            </a>
+          ))}
         </div>
       </div>
     </footer>

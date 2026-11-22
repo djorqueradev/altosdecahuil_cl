@@ -41,6 +41,8 @@ export const IconSync = (p: P) => (<svg {...base(p)}><path d="M4 12a8 8 0 0 1 14
 export const IconBan = (p: P) => (<svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="M5.6 5.6l12.8 12.8" /></svg>)
 export const IconLogout = (p: P) => (<svg {...base(p)}><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3" /></svg>)
 export const IconShare = (p: P) => (<svg {...base(p)}><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" /></svg>)
+export const IconStar = (p: P) => (<svg {...base(p)} fill="currentColor" stroke="none"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" /></svg>)
+export const IconExternal = (p: P) => (<svg {...base(p)}><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>)
 
 const AMENITY_ICONS: Record<string, (p: P) => React.JSX.Element> = {
   fogón: IconFire,

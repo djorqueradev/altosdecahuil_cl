@@ -28,6 +28,27 @@ export const site = {
     { title: 'Playa', text: 'La playa La Pancora está a unos 5 minutos caminando.' },
     { title: 'Parrilla', text: 'Hay parrilla y mesa para comer al aire libre en el patio.' },
   ],
+  // Publicaciones en otras plataformas. Actualiza la nota y el número de reseñas cuando cambien.
+  listings: [
+    {
+      id: 'airbnb',
+      name: 'Airbnb',
+      url: 'https://www.airbnb.cl/rooms/772297721920795293',
+      rating: '4,97',
+      scale: '5',
+      reviews: '35 reseñas',
+      badge: 'Favorito entre huéspedes · Superanfitriona',
+    },
+    {
+      id: 'booking',
+      name: 'Booking.com',
+      url: 'https://www.booking.com/hotel/cl/cabanas-altos-de-cahuil-cahuil1.es.html',
+      rating: '9,3',
+      scale: '10',
+      reviews: '24 comentarios',
+      badge: 'Fantástico',
+    },
+  ],
   timeZone: 'America/Santiago',
   // Minutos que se reservan las fechas mientras el huésped paga en Mercado Pago
   paymentHoldMinutes: 30,

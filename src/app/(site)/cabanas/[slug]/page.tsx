@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { RatingBadges } from '@/components/listings'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -51,6 +52,7 @@ export default async function CabinPage(props: PageProps<'/cabanas/[slug]'>) {
             <p className="fx-up fx-d1 mt-3 text-base text-sub">
               Hasta {cabin.capacity} huéspedes · {cabin.bedrooms_summary} · terraza privada
             </p>
+            <RatingBadges className="fx-up fx-d2 mt-4" />
           </div>
         </div>
 

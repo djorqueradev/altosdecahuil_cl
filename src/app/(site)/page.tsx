@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { ReviewsSection } from '@/components/listings'
 import Link from 'next/link'
 import { CabinPrice } from '@/components/cabin-price'
 import { IconCar, IconDeck, IconFire, IconKitchen } from '@/components/icons'
@@ -136,6 +137,9 @@ export default async function HomePage() {
           ))}
         </Reveal>
       </section>
+
+      {/* RESEÑAS / OTRAS PLATAFORMAS */}
+      <ReviewsSection />
 
       {/* UBICACIÓN */}
       <section id="ubicacion" className="relative flex min-h-[560px] items-center overflow-hidden md:min-h-[640px]">
