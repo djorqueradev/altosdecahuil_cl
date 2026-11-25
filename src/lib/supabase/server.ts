@@ -2,6 +2,7 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { env } from '@/lib/env'
+import { REMEMBER_COOKIE, applyRemember } from './remember'
 
 /** Cliente con la sesión del usuario (para el login del panel). */
 export async function supabaseServer() {
@@ -13,7 +14,8 @@ export async function supabaseServer() {
       },
       setAll(cookiesToSet) {
         try {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+          const remember = cookieStore.get(REMEMBER_COOKIE)?.value !== '0'
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, applyRemember(options, remember)))
         } catch {
           // Llamado desde un Server Component: el proxy refresca la sesión.
         }

@@ -62,3 +62,5 @@ export function AmenityIcon({ label, ...p }: P & { label: string }) {
   const Icon = key ? AMENITY_ICONS[key] : IconCheck
   return <Icon {...p} />
 }
+export const IconEye = (p: P) => (<svg {...base(p)}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>)
+export const IconEyeOff = (p: P) => (<svg {...base(p)}><path d="M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7c1.7 0 3.2-.5 4.5-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>)

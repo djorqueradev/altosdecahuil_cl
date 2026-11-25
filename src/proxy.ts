@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { REMEMBER_COOKIE, applyRemember } from '@/lib/supabase/remember'
 
 // Refresca la sesión de Supabase en el panel y manda al login a quien no la tenga.
 export async function proxy(request: NextRequest) {
@@ -16,15 +17,16 @@ export async function proxy(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+          const remember = request.cookies.get(REMEMBER_COOKIE)?.value !== '0'
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, applyRemember(options, remember)))
         },
       },
     },
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // getClaims valida el token localmente (sin ir al servidor de Auth en cada clic) y lo refresca si venció.
+  const { data } = await supabase.auth.getClaims()
+  const user = data?.claims?.sub ? data.claims : null
 
   const isLogin = request.nextUrl.pathname.startsWith('/admin/login')
   if (!user && !isLogin) {
