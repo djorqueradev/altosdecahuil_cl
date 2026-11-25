@@ -3,7 +3,7 @@ import type { Booking } from '@/lib/types'
 
 export type CabinLite = { id: string; slug: string; name: string; capacity: number; price_per_night: number; cleaning_fee: number; min_nights: number }
 
-export type ItemKind = 'direct' | 'manual' | 'pending' | 'booking' | 'airbnb' | 'block'
+export type ItemKind = 'direct' | 'manual' | 'pending' | 'booking' | 'airbnb' | 'block' | 'closed'
 
 /** Algo que ocupa noches de una cabaña en el calendario. end = día de salida (exclusivo). */
 export type CalItem = {
@@ -16,7 +16,12 @@ export type CalItem = {
   bookingId?: string
   blockId?: string
   reason?: string
+  /** Solo eventos de Booking/Airbnb */
+  channel?: 'booking' | 'airbnb'
+  eventId?: string
 }
+
+export const CHANNEL_NAME = { booking: 'Booking.com', airbnb: 'Airbnb' } as const
 
 export type AdminBooking = Booking & { cabin_name: string }
 
@@ -27,6 +32,7 @@ export const KIND_LABEL: Record<ItemKind, string> = {
   booking: 'Booking.com',
   airbnb: 'Airbnb',
   block: 'Bloqueado',
+  closed: 'Cerrado en Booking/Airbnb',
 }
 
 export const KIND_BAR: Record<ItemKind, string> = {
@@ -36,6 +42,7 @@ export const KIND_BAR: Record<ItemKind, string> = {
   booking: 'bg-[#3D6FD6] text-white',
   airbnb: 'bg-[#8A3F38] text-[#FFE9E5] ring-1 ring-inset ring-[#E6837A]/70',
   block: 'bg-[repeating-linear-gradient(45deg,#3A332C_0_6px,#2A2521_6px_12px)] text-sub',
+  closed: 'bg-[repeating-linear-gradient(45deg,#2A3040_0_6px,#20242E_6px_12px)] text-[#AEB9D3] ring-1 ring-inset ring-[#5B7BC4]/35',
 }
 
 export const STATUS: Record<string, { label: string; tone: 'green' | 'amber' | 'red' | 'gray' | 'blue' }> = {

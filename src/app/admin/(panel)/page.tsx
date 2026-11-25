@@ -17,7 +17,9 @@ function who(it: CalItem, bookings: Record<string, AdminBooking>) {
     const b = bookings[it.bookingId]
     return { name: `${b.guest_first_name} ${b.guest_last_name !== '-' ? b.guest_last_name : ''}`.trim(), booking: b }
   }
-  return { name: it.kind === 'block' ? `Bloqueo: ${it.label}` : `Huésped de ${KIND_LABEL[it.kind]}`, booking: undefined }
+  if (it.kind === 'block') return { name: `Bloqueo: ${it.label}`, booking: undefined }
+  if (it.kind === 'closed') return { name: it.label, booking: undefined }
+  return { name: `Reserva de ${KIND_LABEL[it.kind]}`, booking: undefined }
 }
 
 export default async function TodayPage() {
@@ -40,11 +42,12 @@ export default async function TodayPage() {
   const cabins = cabinsRes.data ?? []
   const cabinName = Object.fromEntries(cabins.map((c) => [c.id, c.name]))
   const byId = Object.fromEntries(bookings.map((b) => [b.id, b]))
-  const real = items.filter((i) => i.kind !== 'block')
+  const real = items.filter((i) => i.kind !== 'block' && i.kind !== 'closed')
 
   const arrivals = real.filter((i) => i.start === today)
   const departures = real.filter((i) => i.end === today)
-  const tonight = cabins.map((c) => ({ cabin: c, item: items.find((i) => i.cabinId === c.id && i.start <= today && i.end > today) }))
+  const tonightOf = (c: { id: string }, list: CalItem[]) => list.find((i) => i.cabinId === c.id && i.start <= today && i.end > today)
+  const tonight = cabins.map((c) => ({ cabin: c, item: tonightOf(c, real) ?? tonightOf(c, items.filter((i) => i.kind === 'block')), closed: tonightOf(c, items.filter((i) => i.kind === 'closed')) }))
 
   // Próximos 7 días
   const agenda = Array.from({ length: 7 }, (_, k) => {
@@ -123,7 +126,7 @@ export default async function TodayPage() {
 
       {/* Esta noche */}
       <div className="mb-6 grid gap-3 sm:grid-cols-2">
-        {tonight.map(({ cabin, item }) => {
+        {tonight.map(({ cabin, item, closed }) => {
           const w = item ? who(item, byId) : null
           return (
             <div key={cabin.id} className="flex items-center gap-4 rounded-2xl border border-cream/[0.06] bg-surface p-4">
@@ -138,7 +141,14 @@ export default async function TodayPage() {
                     <span className="block text-xs text-muted">hasta {formatDate(item.end)} · {KIND_LABEL[item.kind]}</span>
                   </OpenDetail>
                 ) : (
-                  <p className="mt-0.5 text-base font-semibold text-[#A7E3BC]">Libre</p>
+                  <>
+                    <p className="mt-0.5 text-base font-semibold text-[#A7E3BC]">Libre</p>
+                    {closed && (
+                      <OpenDetail item={closed} cabinName={cabin.name} className="-mx-1 rounded-lg px-1 text-xs text-muted">
+                        {closed.label} hasta {formatDate(closed.end)} · revisar
+                      </OpenDetail>
+                    )}
+                  </>
                 )}
               </div>
             </div>

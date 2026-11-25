@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/admin-auth'
 import { getQuote } from '@/lib/data'
-import { diffDays, isISODate, todayInChile } from '@/lib/dates'
+import { addDays, diffDays, isISODate, todayInChile } from '@/lib/dates'
 import { isEmail, resendConfirmation, sendBookingCancelled, sendBookingConfirmed, sendEmail } from '@/lib/email'
 import { renderTemplate, TEMPLATES, type TemplateId } from '@/lib/emails/templates'
 import { env } from '@/lib/env'
@@ -204,6 +204,57 @@ export async function deleteBlockAction(id: string): Promise<ActionResult> {
   const { error } = await supabaseAdmin().from('blocks').delete().eq('id', id)
   if (error) return fail(error.message)
   return done('Bloqueo eliminado.')
+}
+
+/**
+ * Abre noches de una cabaña: quita/recorta bloqueos propios y libera las noches que
+ * Booking/Airbnb marcan como cerradas. Nunca toca reservas (propias ni "Reserved" de Airbnb).
+ */
+export async function openDatesAction(cabinId: string, firstNight: string, lastNight: string): Promise<ActionResult> {
+  await requireAdmin()
+  if (!isISODate(firstNight) || !isISODate(lastNight) || lastNight < firstNight) return fail('Revisa las fechas.')
+  const start = firstNight
+  const end = addDays(lastNight, 1)
+  const db = supabaseAdmin()
+  const nowIso = new Date().toISOString()
+
+  const [{ data: own }, { data: ext }, { data: blocks }] = await Promise.all([
+    db.from('bookings').select('code, status, expires_at').eq('cabin_id', cabinId).in('status', ['confirmed', 'pending']).lt('check_in', end).gt('check_out', start),
+    db.from('external_busy').select('channel, summary, orig_start, orig_end').eq('cabin_id', cabinId).lt('start_date', end).gt('end_date', start),
+    db.from('blocks').select('id, start_date, end_date, reason').eq('cabin_id', cabinId).lt('start_date', end).gt('end_date', start),
+  ])
+  const ownLive = (own ?? []).filter((b) => b.status === 'confirmed' || (b.expires_at && b.expires_at > nowIso))
+  if (ownLive.length) return fail(`En esas fechas hay una reserva (${ownLive.map((b) => b.code).join(', ')}). Cancélala si corresponde.`)
+  if ((ext ?? []).some((e) => e.channel === 'airbnb' && /reserv/i.test(e.summary ?? ''))) {
+    return fail('En esas fechas hay una reserva de Airbnb. Esa no se puede abrir desde aquí.')
+  }
+
+  // Bloqueos propios: borrar, recortar o partir
+  let changed = 0
+  for (const k of blocks ?? []) {
+    changed++
+    if (k.start_date >= start && k.end_date <= end) await db.from('blocks').delete().eq('id', k.id)
+    else if (k.start_date < start && k.end_date > end) {
+      await db.from('blocks').update({ end_date: start }).eq('id', k.id)
+      await db.from('blocks').insert({ cabin_id: cabinId, start_date: end, end_date: k.end_date, reason: k.reason })
+    } else if (k.start_date < start) await db.from('blocks').update({ end_date: start }).eq('id', k.id)
+    else await db.from('blocks').update({ start_date: end }).eq('id', k.id)
+  }
+
+  if ((ext ?? []).length) {
+    const { error } = await db.from('open_dates').insert({ cabin_id: cabinId, start_date: start, end_date: end, note: 'Abierto desde el panel' })
+    if (error) return fail(error.message)
+    changed++
+  }
+  if (!changed) return fail('Esas noches ya estaban libres.')
+  return done('Fechas abiertas. Booking y Airbnb las verán libres en su próxima actualización.')
+}
+
+export async function reopenCloseAction(fd: FormData) {
+  await requireAdmin()
+  await supabaseAdmin().from('open_dates').delete().eq('id', str(fd, 'id'))
+  revalidatePath('/admin', 'layout')
+  back('/admin/canales', { ok: 'Listo: esas fechas vuelven a seguir lo que digan Booking/Airbnb.' })
 }
 
 // ---------------------------------------------------------------- Formularios de configuración (con redirect)

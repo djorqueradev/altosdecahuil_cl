@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { getAllCabinsAdmin } from '@/lib/data'
+import { addDays, diffDays, formatDate, todayInChile } from '@/lib/dates'
 import { env } from '@/lib/env'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { saveFeedAction } from '../../actions'
+import { reopenCloseAction, saveFeedAction } from '../../actions'
+import { isChannelReservation } from '../../_lib/queries'
 import { CopyField } from '../../_components/copy-field'
 import { Flash } from '../../_components/flash'
 import { Badge, Card, PageHeader, cls } from '../../_components/ui'
@@ -26,8 +29,21 @@ const CHANNELS = [
 export default async function ChannelsPage(props: PageProps<'/admin/canales'>) {
   const sp = await props.searchParams
   const cabins = await getAllCabinsAdmin()
-  const { data: feeds } = await supabaseAdmin().from('channel_feeds').select('*')
+  const db = supabaseAdmin()
+  const today = todayInChile()
+  const horizon = addDays(today, 90)
+  const [{ data: feeds }, { data: ext }, { data: opened }] = await Promise.all([
+    db.from('channel_feeds').select('*'),
+    db.from('external_busy').select('cabin_id, channel, summary, start_date, end_date, orig_start, orig_end').lt('start_date', horizon).gt('end_date', today),
+    db.from('open_dates').select('id, cabin_id, start_date, end_date, created_at').gte('end_date', today).order('start_date'),
+  ])
   const site = env.siteUrl()
+  // Noches de los próximos 90 días que cada canal marca "cerradas" sin ser reservas
+  const closedNights = (cabinId: string, channel: string) =>
+    (ext ?? [])
+      .filter((e) => e.cabin_id === cabinId && e.channel === channel && !isChannelReservation(e))
+      .reduce((n, e) => n + diffDays(e.start_date > today ? e.start_date : today, e.end_date < horizon ? e.end_date : horizon), 0)
+  const cabinName = Object.fromEntries(cabins.map((c) => [c.id, c.name]))
 
   return (
     <>
@@ -59,13 +75,21 @@ export default async function ChannelsPage(props: PageProps<'/admin/canales'>) {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-semibold">{ch.name}</p>
                       {feed ? (
-                        ok ? <Badge tone="green">Conectado · {feed.last_event_count ?? 0} reservas</Badge> : <Badge tone="red">Error al leer</Badge>
+                        ok ? <Badge tone="green">Conectado</Badge> : <Badge tone="red">Error al leer</Badge>
                       ) : (
                         <Badge tone="gray">Sin conectar</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted">{ch.how}</p>
                     {feed && !ok && feed.last_status && <p className="text-xs text-[#F4B4AC]">{feed.last_status}</p>}
+                    {feed && closedNights(c.id, ch.id) >= 30 && (
+                      <p className="rounded-xl border border-amber/30 bg-amber/10 px-3.5 py-2.5 text-[13px] leading-relaxed text-amber-light">
+                        ⚠ {ch.name} tiene <strong>cerradas {closedNights(c.id, ch.id)} de las próximas 90 noches</strong> de esta cabaña, sin que sean reservas. Eso también las cierra en la web
+                        {ch.id === 'booking' ? ' y en Airbnb' : ' y en Booking'}. Revisa la disponibilidad en {ch.name}
+                        {ch.id === 'booking' ? ' (habitaciones a la venta)' : ''} o ábrelas desde el{' '}
+                        <Link href={`/admin/calendario?vista=${c.slug}`} className="underline underline-offset-2">calendario</Link>.
+                      </p>
+                    )}
                     <form action={saveFeedAction} className="flex flex-col gap-2">
                       <input type="hidden" name="cabin_id" value={c.id} />
                       <input type="hidden" name="channel" value={ch.id} />
@@ -88,6 +112,25 @@ export default async function ChannelsPage(props: PageProps<'/admin/canales'>) {
           </Card>
         ))}
       </div>
+
+      {(opened ?? []).length > 0 && (
+        <Card title="Fechas abiertas a mano" className="mt-4">
+          <p className="mb-3 text-sm text-muted">Noches que Booking/Airbnb tenían cerradas y que abrieron desde el panel. Si las vuelves a cerrar, se usa lo que digan los canales.</p>
+          <ul className="flex flex-col divide-y divide-cream/[0.06]">
+            {(opened ?? []).map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 text-sm">
+                <span>
+                  <strong>{cabinName[o.cabin_id]}</strong> · {formatDate(o.start_date)} → última noche {formatDate(addDays(o.end_date, -1))}
+                </span>
+                <form action={reopenCloseAction}>
+                  <input type="hidden" name="id" value={o.id} />
+                  <button type="submit" className={cls.ghostSm}>Volver a cerrar</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </>
   )
 }

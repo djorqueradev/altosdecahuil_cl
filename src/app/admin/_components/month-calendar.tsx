@@ -6,6 +6,7 @@ import { IconChevronLeft, IconChevronRight, IconClose } from '@/components/icons
 import { addDays, addMonths, diffDays, formatDate, formatMonth, startOfMonth, weekdayMondayFirst } from '@/lib/dates'
 import { formatCLP } from '@/lib/money'
 import { nightPrice, type Rate } from '@/lib/pricing'
+import { openDatesAction } from '../actions'
 import { useAdmin } from './admin-provider'
 import { KIND_BAR, KIND_LABEL, type AdminBooking, type CabinLite, type CalItem, type ItemKind } from './model'
 import { cls } from './ui'
@@ -26,7 +27,7 @@ type Sel = { cabinId: string; a: string; b?: string }
 const shortName = (n: string) => n.replace(/^Caba(ñ|n)a\s*/i, 'C')
 
 export function MonthCalendar({ month, today, view, items, bookings, rates }: Props) {
-  const { cabins, openBooking, openItem, openNewBooking, openBlock } = useAdmin()
+  const { cabins, openBooking, openItem, openNewBooking, openBlock, run } = useAdmin()
   const [sel, setSel] = useState<Sel | null>(null)
   const [hidden, setHidden] = useState<ItemKind[]>([])
 
@@ -60,6 +61,8 @@ export function MonthCalendar({ month, today, view, items, bookings, rates }: Pr
   const selLast = sel ? sel.b ?? sel.a : undefined
   const selNights = sel ? diffDays(sel.a, selLast!) + 1 : 0
   const selCabin = sel ? cabins.find((c) => c.id === sel.cabinId) : undefined
+  const selEnd = selLast ? addDays(selLast, 1) : undefined
+  const selClosed = !!sel && items.some((it) => it.cabinId === sel.cabinId && (it.kind === 'block' || it.kind === 'closed') && it.start < selEnd! && it.end > selFirst!)
 
   // Ocupación del mes por cabaña
   const monthEnd = addMonths(month, 1)
@@ -67,7 +70,7 @@ export function MonthCalendar({ month, today, view, items, bookings, rates }: Pr
   const occ = lanes.map((c) => {
     let n = 0
     for (const it of items) {
-      if (it.cabinId !== c.id || it.kind === 'pending' || it.kind === 'block') continue
+      if (it.cabinId !== c.id || it.kind === 'pending' || it.kind === 'block' || it.kind === 'closed') continue
       const s = it.start > month ? it.start : month
       const e = it.end < monthEnd ? it.end : monthEnd
       n += Math.max(0, diffDays(s, e))
@@ -236,7 +239,7 @@ export function MonthCalendar({ month, today, view, items, bookings, rates }: Pr
           )
         })}
       </div>
-      <p className="text-xs text-muted">Toca un día libre para empezar a seleccionar noches, y luego el último día. Toca una barra para ver la reserva.</p>
+      <p className="text-xs text-muted">Toca un día para empezar a seleccionar noches y luego el último día: podrás crear una reserva, bloquear o abrir fechas cerradas. Toca una barra para ver el detalle.</p>
 
       {/* Barra de acción de la selección */}
       {sel && selCabin && (
@@ -251,6 +254,19 @@ export function MonthCalendar({ month, today, view, items, bookings, rates }: Pr
             </div>
             <button type="button" onClick={() => { openNewBooking({ cabinId: sel.cabinId, checkIn: selFirst, checkOut: addDays(selLast!, 1) }); setSel(null) }} className={cls.btnSm}>Nueva reserva</button>
             <button type="button" onClick={() => { openBlock({ cabinId: sel.cabinId, firstNight: selFirst, lastNight: selLast }); setSel(null) }} className={cls.ghostSm}>Bloquear</button>
+            {selClosed && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!window.confirm(`¿Abrir ${selNights} ${selNights === 1 ? 'noche' : 'noches'} en ${selCabin.name}? Quedarán disponibles en la web, Booking y Airbnb.`)) return
+                  const r = await run(() => openDatesAction(sel.cabinId, selFirst!, selLast!))
+                  if (r.ok) setSel(null)
+                }}
+                className={cls.ghostSm}
+              >
+                Abrir fechas
+              </button>
+            )}
             <button type="button" aria-label="Quitar selección" onClick={() => setSel(null)} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-cream"><IconClose size={16} /></button>
           </div>
         </div>

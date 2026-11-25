@@ -27,7 +27,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/ical/[slug]'>) {
       .in('status', ['confirmed', 'pending'])
       .gte('check_out', from),
     db.from('blocks').select('id, start_date, end_date').eq('cabin_id', cabin.id).gte('end_date', from),
-    db.from('external_events').select('id, channel, start_date, end_date').eq('cabin_id', cabin.id).gte('end_date', from),
+    db.from('external_busy').select('id, channel, start_date, end_date').eq('cabin_id', cabin.id).gte('end_date', from),
   ])
 
   const events: ICalEvent[] = [
@@ -37,7 +37,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/ical/[slug]'>) {
     ...(blocks.data ?? []).map((k) => ({ uid: `block-${k.id}@altosdecahuil`, start: k.start_date, end: k.end_date, summary: 'No disponible' })),
     ...(external.data ?? [])
       .filter((e) => e.channel !== exclude)
-      .map((e) => ({ uid: `ext-${e.id}@altosdecahuil`, start: e.start_date, end: e.end_date, summary: 'No disponible' })),
+      .map((e) => ({ uid: `ext-${e.id}-${e.start_date}@altosdecahuil`, start: e.start_date, end: e.end_date, summary: 'No disponible' })),
   ]
 
   return new Response(buildICS(`Altos de Cahuil · ${cabin.name}`, events), {
