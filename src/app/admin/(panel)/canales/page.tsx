@@ -15,6 +15,11 @@ export const metadata: Metadata = { title: 'Booking y Airbnb' }
 
 const CHANNELS = [
   {
+    id: 'hospitable',
+    name: 'Hospitable (Airbnb + Booking)',
+    how: 'Hospitable → Propiedades → la cabaña → Export calendar (Copy iCal link) para el paso 1, y "Add External iCal" para el paso 2.',
+  },
+  {
     id: 'booking',
     name: 'Booking.com',
     how: 'Extranet → Tarifas y disponibilidad → Sincronizar calendarios.',
@@ -49,17 +54,17 @@ export default async function ChannelsPage(props: PageProps<'/admin/canales'>) {
     <>
       <PageHeader
         title="Booking y Airbnb"
-        subtitle="Conecta los calendarios en las dos direcciones para que una reserva en cualquier lado bloquee las fechas en los demás."
+        subtitle="Sincronización con Airbnb y Booking.com a través de Hospitable."
       />
       <Flash sp={sp} />
 
       <div className="mb-5 rounded-2xl border border-cream/[0.06] bg-surface p-5 text-sm leading-relaxed text-sub">
-        <p className="mb-2 font-semibold text-cream">Cómo se conecta (una vez por cabaña y por canal):</p>
-        <ol className="list-decimal space-y-1 pl-5">
-          <li>En Booking/Airbnb, <strong className="text-cream">exporta</strong> el calendario y pega ese enlace en el paso 1.</li>
-          <li>Copia nuestro enlace del paso 2 y pégalo en la opción <strong className="text-cream">importar calendario</strong> de Booking/Airbnb.</li>
-        </ol>
-        <p className="mt-2 text-xs text-muted">Booking y Airbnb leen nuestro calendario cada cierto tiempo (normalmente entre 30 minutos y unas horas). Nosotros leemos los suyos antes de cada reserva web y periódicamente.</p>
+        <p className="mb-2 font-semibold text-cream">Cómo funciona ahora</p>
+        <p>
+          Airbnb y Booking.com están conectados a <strong className="text-cream">Hospitable</strong> por su conexión oficial (se sincronizan al instante entre ellos).
+          Tu web se conecta con Hospitable una vez por cabaña: tus reservas y bloqueos de la web pasan a Hospitable, y las reservas de Airbnb y Booking llegan aquí con el nombre del huésped.
+        </p>
+        <p className="mt-2 text-xs text-muted">Hospitable lee nuestro calendario cada ~20 minutos. Nosotros leemos el suyo antes de cada reserva web y periódicamente.</p>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -68,6 +73,8 @@ export default async function ChannelsPage(props: PageProps<'/admin/canales'>) {
             <div className="grid gap-4 lg:grid-cols-2">
               {CHANNELS.map((ch) => {
                 const feed = (feeds ?? []).find((f) => f.cabin_id === c.id && f.channel === ch.id)
+                // Booking y Airbnb directos solo se muestran si siguen conectados (ahora todo pasa por Hospitable)
+                if (ch.id !== 'hospitable' && !feed) return null
                 const exportUrl = `${site}/api/ical/${c.slug}?token=${c.ical_export_token}&exclude=${ch.id}`
                 const ok = feed?.last_status === 'ok'
                 return (

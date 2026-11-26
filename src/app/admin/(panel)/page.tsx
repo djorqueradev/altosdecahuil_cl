@@ -19,6 +19,7 @@ function who(it: CalItem, bookings: Record<string, AdminBooking>) {
   }
   if (it.kind === 'block') return { name: `Bloqueo: ${it.label}`, booking: undefined }
   if (it.kind === 'closed') return { name: it.label, booking: undefined }
+  if (it.channel === 'hospitable') return { name: it.label, booking: undefined }
   return { name: `Reserva de ${KIND_LABEL[it.kind]}`, booking: undefined }
 }
 

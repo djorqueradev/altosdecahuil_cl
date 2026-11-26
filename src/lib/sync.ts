@@ -4,7 +4,7 @@ import { addDays, todayInChile } from '@/lib/dates'
 import { parseICS } from '@/lib/ical'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-type Feed = { id: string; cabin_id: string; channel: 'booking' | 'airbnb'; ical_url: string }
+type Feed = { id: string; cabin_id: string; channel: 'booking' | 'airbnb' | 'hospitable'; ical_url: string }
 
 export type SyncResult = { feedId: string; channel: string; ok: boolean; events: number; error?: string }
 
@@ -22,7 +22,18 @@ async function syncFeed(feed: Feed): Promise<SyncResult> {
     if (!text.includes('BEGIN:VCALENDAR')) throw new Error('La URL no devolvió un calendario iCal')
 
     const minDate = addDays(todayInChile(), -1)
-    const events = parseICS(text).filter((e) => e.end >= minDate)
+    let events = parseICS(text).filter((e) => e.end >= minDate)
+
+    // Hospitable puede devolvernos nuestras propias reservas/bloqueos (los importa desde nuestra web):
+    // se descartan los que coinciden exactamente con algo que ya tenemos.
+    if (feed.channel === 'hospitable' && events.length) {
+      const [{ data: own }, { data: blocks }] = await Promise.all([
+        db.from('bookings').select('check_in, check_out').eq('cabin_id', feed.cabin_id).in('status', ['confirmed', 'pending']).gte('check_out', minDate),
+        db.from('blocks').select('start_date, end_date').eq('cabin_id', feed.cabin_id).gte('end_date', minDate),
+      ])
+      const mine = new Set([...(own ?? []).map((b) => `${b.check_in}|${b.check_out}`), ...(blocks ?? []).map((k) => `${k.start_date}|${k.end_date}`)])
+      events = events.filter((e) => !mine.has(`${e.start}|${e.end}`) && !/altosdecahuil/i.test(e.uid))
+    }
 
     if (events.length) {
       const { error } = await db.from('external_events').upsert(

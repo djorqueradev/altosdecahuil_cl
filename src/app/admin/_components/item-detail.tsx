@@ -12,6 +12,7 @@ import { cls } from './ui'
 const CHANNEL_LINK: Record<string, string> = {
   booking: 'https://admin.booking.com',
   airbnb: 'https://www.airbnb.cl/hosting/reservations',
+  hospitable: 'https://my.hospitable.com/inbox',
 }
 
 /** Formulario para abrir (liberar) noches de un bloqueo o de un cierre de Booking/Airbnb. */
@@ -67,7 +68,8 @@ export function ItemDetail({ item, cabinName, onClose }: { item: CalItem; cabinN
   const nights = diffDays(item.start, item.end)
   const isBlock = item.kind === 'block'
   const isClosed = item.kind === 'closed'
-  const channel = item.channel ? CHANNEL_NAME[item.channel] : KIND_LABEL[item.kind]
+  const viaHospitable = item.channel === 'hospitable'
+  const channel = item.channel && !viaHospitable ? CHANNEL_NAME[item.channel] : KIND_LABEL[item.kind]
   const nightLabels = isBlock || isClosed
   const title = isBlock ? 'Fechas bloqueadas' : isClosed ? `Cerrado en ${channel}` : `Reserva de ${channel}`
 
@@ -79,6 +81,12 @@ export function ItemDetail({ item, cabinName, onClose }: { item: CalItem; cabinN
           <div><p className="text-xs text-muted">{nightLabels ? 'Última noche' : 'Salida'}</p><p className="mt-0.5 font-semibold">{formatDate(nightLabels ? addDays(item.end, -1) : item.end)}</p></div>
           <div><p className="text-xs text-muted">Noches</p><p className="mt-0.5 font-semibold">{nights}</p></div>
           {isBlock && <div><p className="text-xs text-muted">Motivo</p><p className="mt-0.5 font-semibold">{item.reason}</p></div>}
+          {viaHospitable && (
+            <>
+              <div className="col-span-2"><p className="text-xs text-muted">Huésped</p><p className="mt-0.5 font-semibold">{item.label}</p></div>
+              {item.code && <div className="col-span-2"><p className="text-xs text-muted">Código en {channel}</p><p className="mt-0.5 font-semibold tracking-wide">{item.code}</p></div>}
+            </>
+          )}
         </section>
 
         {isBlock && (
@@ -118,9 +126,11 @@ export function ItemDetail({ item, cabinName, onClose }: { item: CalItem; cabinN
         {!isBlock && !isClosed && (
           <>
             <p className="text-sm leading-relaxed text-sub">
-              Esta reserva viene del calendario de {channel}. Los datos del huésped y el pago se ven allá; aquí solo bloquea las fechas para que nadie más reserve.
+              {viaHospitable
+                ? `Reserva hecha en ${channel}. Los mensajes con el huésped y el detalle del pago están en Hospitable.`
+                : `Esta reserva viene del calendario de ${channel}. Los datos del huésped y el pago se ven allá; aquí solo bloquea las fechas para que nadie más reserve.`}
             </p>
-            <a href={CHANNEL_LINK[item.channel ?? item.kind]} target="_blank" rel="noreferrer" className={`${cls.btnSm} self-start`}>Abrir {channel} ↗</a>
+            <a href={CHANNEL_LINK[item.channel ?? item.kind]} target="_blank" rel="noreferrer" className={`${cls.btnSm} self-start`}>Abrir {viaHospitable ? 'Hospitable' : channel} ↗</a>
             {item.channel === 'booking' &&
               (showOpen ? (
                 <OpenDatesForm

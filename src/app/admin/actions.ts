@@ -54,7 +54,7 @@ export async function quoteAction(cabinId: string, checkIn: string, checkOut: st
     db.rpc('cabin_busy_ranges', { p_cabin: cabinId, p_from: checkIn, p_to: checkOut }),
   ])
   const conflicts = ((busy.data ?? []) as { start_date: string; end_date: string; kind: string }[]).map((r) => {
-    const k = r.kind === 'booking' ? 'otra reserva' : r.kind === 'block' ? 'un bloqueo' : r.kind === 'airbnb' ? 'Airbnb' : 'Booking.com'
+    const k = r.kind === 'booking' ? 'otra reserva' : r.kind === 'block' ? 'un bloqueo' : r.kind === 'airbnb' ? 'Airbnb' : r.kind === 'hospitable' ? 'una reserva de Airbnb/Booking' : 'Booking.com'
     return `${k} (${r.start_date} → ${r.end_date})`
   })
   return {
@@ -348,7 +348,7 @@ export async function saveFeedAction(fd: FormData) {
   const cabin_id = str(fd, 'cabin_id')
   const channel = str(fd, 'channel')
   const ical_url = str(fd, 'ical_url')
-  if (!['booking', 'airbnb'].includes(channel)) back('/admin/canales', { error: 'Canal inválido' })
+  if (!['booking', 'airbnb', 'hospitable'].includes(channel)) back('/admin/canales', { error: 'Canal inválido' })
   const db = supabaseAdmin()
   if (!ical_url) {
     await db.from('channel_feeds').delete().eq('cabin_id', cabin_id).eq('channel', channel)

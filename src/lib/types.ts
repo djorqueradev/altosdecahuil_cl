@@ -22,7 +22,7 @@ export type PublicCabin = Omit<Cabin, 'ical_export_token' | 'active' | 'sort_ord
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'expired'
 export type BookingSource = 'direct' | 'manual'
-export type Channel = 'booking' | 'airbnb'
+export type Channel = 'booking' | 'airbnb' | 'hospitable'
 
 export type Booking = {
   id: string

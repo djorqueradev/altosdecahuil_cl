@@ -17,11 +17,13 @@ export type CalItem = {
   blockId?: string
   reason?: string
   /** Solo eventos de Booking/Airbnb */
-  channel?: 'booking' | 'airbnb'
+  channel?: 'booking' | 'airbnb' | 'hospitable'
+  /** Código de la reserva en Airbnb/Booking (viene por Hospitable) */
+  code?: string
   eventId?: string
 }
 
-export const CHANNEL_NAME = { booking: 'Booking.com', airbnb: 'Airbnb' } as const
+export const CHANNEL_NAME = { booking: 'Booking.com', airbnb: 'Airbnb', hospitable: 'Hospitable' } as const
 
 export type AdminBooking = Booking & { cabin_name: string }
 

@@ -6,7 +6,7 @@ import { CHANNEL_NAME, type AdminBooking, type CalItem } from '../_components/mo
 
 type BookingRow = Booking & { cabins: { name: string } | null }
 
-type ExternalRow = { id: string; cabin_id: string; channel: 'booking' | 'airbnb'; summary: string | null; start_date: string; end_date: string; orig_start: string; orig_end: string }
+type ExternalRow = { id: string; cabin_id: string; channel: 'booking' | 'airbnb' | 'hospitable'; summary: string | null; start_date: string; end_date: string; orig_start: string; orig_end: string }
 
 /**
  * ¿El evento importado es una reserva o solo un cierre de fechas?
@@ -14,6 +14,7 @@ type ExternalRow = { id: string; cabin_id: string; channel: 'booking' | 'airbnb'
  * así que tomamos como cierre lo que dura más de 30 noches.
  */
 export function isChannelReservation(e: Pick<ExternalRow, 'channel' | 'summary' | 'orig_start' | 'orig_end'>) {
+  if (e.channel === 'hospitable') return true // Hospitable solo exporta reservas
   if (e.channel === 'airbnb') return /reserv/i.test(e.summary ?? '')
   return diffDays(e.orig_start, e.orig_end) <= 30
 }
@@ -56,6 +57,20 @@ export async function loadOccupancy(from: string, to: string) {
       reason: k.reason,
     })),
     ...((external.data ?? []) as ExternalRow[]).map<CalItem>((e) => {
+      if (e.channel === 'hospitable') {
+        const h = parseHospitableSummary(e.summary)
+        return {
+          key: `e-${e.id}-${e.start_date}`,
+          kind: h.source,
+          cabinId: e.cabin_id,
+          start: e.start_date,
+          end: e.end_date,
+          label: h.name || CHANNEL_NAME[h.source],
+          channel: 'hospitable',
+          eventId: e.id,
+          code: h.code,
+        }
+      }
       const reservation = isChannelReservation(e)
       return {
         key: `e-${e.id}-${e.start_date}`,
@@ -70,6 +85,16 @@ export async function loadOccupancy(from: string, to: string) {
     }),
   ]
   return { items, bookings: adminBookings }
+}
+
+/** "Nombre Apellido (HMABC12345)" → nombre, código y plataforma de origen. */
+export function parseHospitableSummary(summary: string | null) {
+  const s = (summary ?? '').trim()
+  const m = s.match(/^(.*?)\s*\(([^)]+)\)\s*$/)
+  const name = (m ? m[1] : s).trim()
+  const code = m ? m[2].trim() : ''
+  const source: 'airbnb' | 'booking' = /^HM[A-Z0-9]+$/i.test(code) ? 'airbnb' : 'booking'
+  return { name, code, source }
 }
 
 /** Noches ocupadas por cabaña y por tipo, dentro de [from, to). */
